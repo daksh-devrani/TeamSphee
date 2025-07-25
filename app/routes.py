@@ -1,9 +1,12 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db
+from app.utils import generate_verification_token, confirm_verification_token
 from app.models import User, Team, TeamMember, Project, Task, Comment
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+from app.email_utils import send_email
+
 
 bp = Blueprint('main', __name__)
 
@@ -26,18 +29,34 @@ def login():
 @bp.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
-        email = request.form['email']
         name = request.form['name']
+        email = request.form['email']
         password = request.form['password']
-        if User.query.filter_by(email=email).first():
-            flash('Email already exists')
-        else:
-            user = User(email=email, name=name, password=generate_password_hash(password))
-            db.session.add(user)
-            db.session.commit()
-            login_user(user)
-            return redirect(url_for('main.dashboard'))
+
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            flash('Email already registered.', 'warning')
+            return redirect(url_for('main.signup'))
+
+        hashed_password = generate_password_hash(password)
+        new_user = User(name=name, email=email, password=hashed_password, is_verified=False)
+
+        db.session.add(new_user)
+        db.session.commit()
+
+        token = generate_verification_token(new_user.email)
+        verify_url = url_for('main.verify_email', token=token, _external=True)
+        send_email(
+            new_user.email,
+            'Verify your Teamsphee account',
+            f'Hi {new_user.name},\n\nPlease verify your email by clicking the link below:\n\n{verify_url}\n\nIf you didn’t request this, just ignore this email.'
+        )
+
+        flash('Signup successful! Please check your email to verify your account.', 'info')
+        return redirect(url_for('main.login'))
+
     return render_template('signup.html')
+
 
 @bp.route('/logout')
 @login_required
@@ -169,3 +188,26 @@ def add_comment(task_id):
         return redirect(url_for('main.project', project_id=task.project_id))
     flash('Access denied')
     return redirect(url_for('main.dashboard'))
+
+
+@bp.route('/verify/<token>')
+def verify_email(token):
+    email = confirm_verification_token(token)
+    if not email:
+        flash("Verification link is invalid or has expired.", "danger")
+        return redirect(url_for("main.login"))
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        flash("User not found.", "danger")
+        return redirect(url_for("main.login"))
+
+    if user.is_verified:
+        flash("Account already verified. Please login.", "info")
+    else:
+        user.is_verified = True
+        db.session.commit()
+        flash("Your account has been verified!", "success")
+
+    return redirect(url_for("main.login"))
+

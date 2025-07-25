@@ -10,6 +10,7 @@ class User(UserMixin, db.Model):
     teams = db.relationship('TeamMember', backref='user', lazy=True)
     tasks = db.relationship('Task', backref='assignee', lazy=True)
     comments = db.relationship('Comment', backref='user', lazy=True)
+    is_verified = db.Column(db.Boolean, default=False)
 
 
 class Team(db.Model):
