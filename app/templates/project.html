@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>{{ project.name }}</h2>
+<form method="POST" action="{{ url_for('main.new_task') }}">
+    <input type="hidden" name="project_id" value="{{ project.id }}">
+    <div class="mb-3">
+        <label for="title" class="form-label">Task Title</label>
+        <input type="text" class="form-control" id="title" name="title" required>
+    </div>
+    <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea class="form-control" id="description" name="description"></textarea>
+    </div>
+    <div class="mb-3">
+        <label for="due_date" class="form-label">Due Date</label>
+        <input type="date" class="form-control" id="due_date" name="due_date">
+    </div>
+    <div class="mb-3">
+        <label for="priority" class="form-label">Priority</label>
+        <select class="form-control" id="priority" name="priority">
+            <option>Low</option>
+            <option>Medium</option>
+            <option>High</option>
+        </select>
+    </div>
+    <div class="mb-3">
+        <label for="assignee_id" class="form-label">Assignee</label>
+        <select class="form-control" id="assignee_id" name="assignee_id">
+            <option value="">Unassigned</option>
+            {% for member in members %}
+            <option value="{{ member.user.id }}">{{ member.user.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Create Task</button>
+</form>
+<h3>Tasks</h3>
+<div class="row">
+    <div class="col-md-4">
+        <h4>To Do</h4>
+        <ul>
+            {% for task in tasks if task.status == 'To Do' %}
+            <li>{{ task.title }} (Due: {{ task.due_date or 'No due date' }})
+                <form method="POST" action="{{ url_for('main.update_task_status', task_id=task.id) }}">
+                    <select name="status" onchange="this.form.submit()">
+                        <option value="To Do" selected>To Do</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Done">Done</option>
+                    </select>
+                </form>
+                <form method="POST" action="{{ url_for('main.add_comment', task_id=task.id) }}">
+                    <input type="text" name="content" placeholder="Add comment" required>
+                    <button type="submit" class="btn btn-sm btn-secondary">Comment</button>
+                </form>
+                <ul>
+                    {% for comment in task.comments %}
+                    <li>{{ comment.content }} by {{ comment.user.name }}</li>
+                    {% endfor %}
+                </ul>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="col-md-4">
+        <h4>In Progress</h4>
+        <ul>
+            {% for task in tasks if task.status == 'In Progress' %}
+            <li>{{ task.title }} (Due: {{ task.due_date or 'No due date' }})
+                <form method="POST" action="{{ url_for('main.update_task_status', task_id=task.id) }}">
+                    <select name="status" onchange="this.form.submit()">
+                        <option value="To Do">To Do</option>
+                        <option value="In Progress" selected>In Progress</option>
+                        <option value="Done">Done</option>
+                    </select>
+                </form>
+                <form method="POST" action="{{ url_for('main.add_comment', task_id=task.id) }}">
+                    <input type="text" name="content" placeholder="Add comment" required>
+                    <button type="submit" class="btn btn-sm btn-secondary">Comment</button>
+                </form>
+                <ul>
+                    {% for comment in task.comments %}
+                    <li>{{ comment.content }} by {{ comment.user.name }}</li>
+                    {% endfor %}
+                </ul>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    <div class="col-md-4">
+        <h4>Done</h4>
+        <ul>
+            {% for task in tasks if task.status == 'Done' %}
+            <li>{{ task.title }} (Due: {{ task.due_date or 'No due date' }})
+                <form method="POST" action="{{ url_for('main.update_task_status', task_id=task.id) }}">
+                    <select name="status" onchange="this.form.submit()">
+                        <option value="To Do">To Do</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Done" selected>Done</option>
+                    </select>
+                </form>
+                <form method="POST" action="{{ url_for('main.add_comment', task_id=task.id) }}">
+                    <input type="text" name="content" placeholder="Add comment" required>
+                    <button type="submit" class="btn btn-sm btn-secondary">Comment</button>
+                </form>
+                <ul>
+                    {% for comment in task.comments %}
+                    <li>{{ comment.content }} by {{ comment.user.name }}</li>
+                    {% endfor %}
+                </ul>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}

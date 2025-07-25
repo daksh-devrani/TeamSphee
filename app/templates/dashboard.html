@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Dashboard</h2>
+
+<h3>My Teams</h3>
+<ul>
+    {% for team_member in teams %}
+    <li><a href="{{ url_for('main.team', team_id=team_member.team.id) }}">{{ team_member.team.name }}</a></li>
+    {% endfor %}
+</ul>
+
+<!-- ✅ Add form to create new team -->
+<form method="POST" action="{{ url_for('main.new_team') }}" class="mb-4">
+    <div class="mb-3">
+        <label for="name" class="form-label">New Team Name</label>
+        <input type="text" class="form-control" id="name" name="name" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Create New Team</button>
+</form>
+
+<h3>My Tasks</h3>
+<ul>
+    {% for task in my_tasks %}
+    <li>{{ task.title }} ({{ task.status }}) - Due: {{ task.due_date or 'No due date' }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}

@@ -1,3 +1,31 @@
 # Default ignored files
 /shelf/
 /workspace.xml
+# Python
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+*.pdb
+
+# Virtual environment
+venv/
+.env
+
+# VSCode or PyCharm
+.vscode/
+.idea/
+
+# MacOS junk files
+.DS_Store
+
+# Log files
+*.log
+
+# Database files (if local)
+*.sqlite3
+
+# Render build artifacts
+*.egg-info/
+build/
+dist/

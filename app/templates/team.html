@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>{{ team.name }}</h2>
+{% if current_user.id == team.created_by_id %}
+<form method="POST" action="{{ url_for('main.invite_member', team_id=team.id) }}">
+    <div class="mb-3">
+        <label for="email" class="form-label">Invite Member by Email</label>
+        <input type="email" class="form-control" id="email" name="email" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Invite</button>
+</form>
+<form method="POST" action="{{ url_for('main.new_project') }}">
+    <input type="hidden" name="team_id" value="{{ team.id }}">
+    <div class="mb-3">
+        <label for="name" class="form-label">New Project Name</label>
+        <input type="text" class="form-control" id="name" name="name" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Create Project</button>
+</form>
+{% endif %}
+<h3>Projects</h3>
+<ul>
+    {% for project in projects %}
+    <li><a href="{{ url_for('main.project', project_id=project.id) }}">{{ project.name }}</a></li>
+    {% endfor %}
+</ul>
+{% endblock %}
