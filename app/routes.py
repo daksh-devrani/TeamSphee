@@ -52,7 +52,7 @@ def signup():
         )
 
         flash('Signup successful! Check your email to verify your account.', 'success')
-        return redirect(url_for('bp.login'))
+        return redirect(url_for('main.login'))
 
     return render_template('signup.html')
 
