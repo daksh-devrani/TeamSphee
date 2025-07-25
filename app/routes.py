@@ -26,6 +26,7 @@ def login():
         flash('Invalid credentials')
     return render_template('login.html')
 
+
 @bp.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
@@ -35,12 +36,10 @@ def signup():
 
         existing_user = User.query.filter_by(email=email).first()
         if existing_user:
-            flash('Email already registered.', 'warning')
+            flash('Email already registered.', 'danger')
             return redirect(url_for('main.signup'))
 
-        hashed_password = generate_password_hash(password)
-        new_user = User(name=name, email=email, password=hashed_password, is_verified=False)
-
+        new_user = User(name=name, email=email, password=generate_password_hash(password), is_verified=False)
         db.session.add(new_user)
         db.session.commit()
 
@@ -48,12 +47,12 @@ def signup():
         verify_url = url_for('main.verify_email', token=token, _external=True)
         send_email(
             new_user.email,
-            'Verify your Teamsphee account',
-            f'Hi {new_user.name},\n\nPlease verify your email by clicking the link below:\n\n{verify_url}\n\nIf you didn’t request this, just ignore this email.'
+            'Verify your TeamSphee Account',
+            f'Hi {new_user.name},\n\nPlease click this link to verify your email:\n\n{verify_url}\n\nThanks!'
         )
 
-        flash('Signup successful! Please check your email to verify your account.', 'info')
-        return redirect(url_for('main.login'))
+        flash('Signup successful! Check your email to verify your account.', 'success')
+        return redirect(url_for('bp.login'))
 
     return render_template('signup.html')
 
@@ -67,9 +66,14 @@ def logout():
 @bp.route('/dashboard')
 @login_required
 def dashboard():
+    if not current_user.is_verified:
+        flash('Please verify your email before accessing the dashboard.', 'warning')
+        return redirect(url_for('main.login'))
+
     teams = TeamMember.query.filter_by(user_id=current_user.id).all()
     my_tasks = Task.query.filter_by(assignee_id=current_user.id).all()
     return render_template('dashboard.html', teams=teams, my_tasks=my_tasks)
+
 
 @bp.route('/team/new', methods=['POST'])  # Remove GET
 @login_required
@@ -210,4 +214,13 @@ def verify_email(token):
         flash("Your account has been verified!", "success")
 
     return redirect(url_for("main.login"))
+
+@bp.before_request
+def restrict_unverified_users():
+    if current_user.is_authenticated \
+            and not current_user.is_verified \
+            and request.endpoint not in ['main.verify_email', 'main.logout', 'main.login', 'main.signup']:
+        flash('Please verify your email to access the site.', 'warning')
+        return redirect(url_for('main.login'))
+
 

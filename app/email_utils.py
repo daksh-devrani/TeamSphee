@@ -3,6 +3,7 @@ from email.mime.text import MIMEText
 from flask import current_app
 import os
 
+
 def send_email(to_email, subject, body):
     from_email = os.getenv('SMTP_EMAIL')
     smtp_server = os.getenv('SMTP_SERVER', 'smtp.gmail.com')
