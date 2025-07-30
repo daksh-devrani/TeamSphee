@@ -1,6 +1,7 @@
 from flask_login import UserMixin
 from app import db
-from datetime import datetime
+from datetime import datetime, timedelta
+import secrets
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -49,3 +50,15 @@ class Comment(db.Model):
     task_id = db.Column(db.Integer, db.ForeignKey('task.id'), nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class TeamInvitation(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    token = db.Column(db.String(64), unique=True, nullable=False, default=lambda: secrets.token_urlsafe(32))
+    role = db.Column(db.String(50), default='member')  # 'member' or 'admin'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, default=lambda: datetime.utcnow() + timedelta(days=3))
+    accepted = db.Column(db.Boolean, default=False)
+
+    team = db.relationship('Team', backref='invitations')

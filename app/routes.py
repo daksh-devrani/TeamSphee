@@ -2,17 +2,20 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from app import db
 from app.utils import generate_verification_token, confirm_verification_token
-from app.models import User, Team, TeamMember, Project, Task, Comment
+from app.models import User, Team, TeamMember, Project, Task, Comment, TeamInvitation
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from app.email_utils import send_email
+from app.invitation import create_and_send_invite
 
 
 bp = Blueprint('main', __name__)
 
+
 @bp.route('/')
 def index():
     return redirect(url_for('main.login'))
+
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -63,6 +66,7 @@ def logout():
     logout_user()
     return redirect(url_for('main.login'))
 
+
 @bp.route('/dashboard')
 @login_required
 def dashboard():
@@ -98,6 +102,7 @@ def team(team_id):
     projects = Project.query.filter_by(team_id=team_id).all()
     return render_template('team.html', team=team, projects=projects)
 
+
 @bp.route('/team/<int:team_id>/invite', methods=['POST'])
 @login_required
 def invite_member(team_id):
@@ -119,6 +124,7 @@ def invite_member(team_id):
         flash('Only admins can invite members')
     return redirect(url_for('main.team', team_id=team_id))
 
+
 @bp.route('/project/new', methods=['POST'])
 @login_required
 def new_project():
@@ -132,6 +138,7 @@ def new_project():
     flash('Only admins can create projects')
     return redirect(url_for('main.team', team_id=team_id))
 
+
 @bp.route('/project/<int:project_id>')
 @login_required
 def project(project_id):
@@ -143,6 +150,7 @@ def project(project_id):
     tasks = Task.query.filter_by(project_id=project_id).all()
     members = TeamMember.query.filter_by(team_id=project.team_id).all()
     return render_template('project.html', project=project, tasks=tasks, members=members)
+
 
 @bp.route('/task/new', methods=['POST'])
 @login_required
@@ -169,6 +177,7 @@ def new_task():
     flash('Access denied')
     return redirect(url_for('main.dashboard'))
 
+
 @bp.route('/task/<int:task_id>/update_status', methods=['POST'])
 @login_required
 def update_task_status(task_id):
@@ -179,6 +188,7 @@ def update_task_status(task_id):
         return redirect(url_for('main.project', project_id=task.project_id))
     flash('Access denied')
     return redirect(url_for('main.dashboard'))
+
 
 @bp.route('/task/<int:task_id>/comment', methods=['POST'])
 @login_required
@@ -215,6 +225,7 @@ def verify_email(token):
 
     return redirect(url_for("main.login"))
 
+
 @bp.before_request
 def restrict_unverified_users():
     if current_user.is_authenticated \
@@ -224,3 +235,57 @@ def restrict_unverified_users():
         return redirect(url_for('main.login'))
 
 
+@bp.route('/invite/<int:team_id>', methods=['POST'])
+@login_required
+def invite_user(team_id):
+    team = Team.query.get_or_404(team_id)
+
+    if team.owner_id != current_user.id:
+        return "Unauthorized", 403
+
+    email = request.form['email']
+    role = request.form.get('role', 'member')  # Optional role
+
+    create_and_send_invite(team, email, role)
+    return f"Invitation sent to {email}"
+
+
+@bp.route('/accept-invite/<token>')
+@login_required
+def accept_invite(token):
+    # Look up invitation
+    invitation = TeamInvitation.query.filter_by(token=token).first()
+
+    # Validate token
+    if not invitation:
+        flash("Invalid invitation token.", "danger")
+        return redirect(url_for('main.dashboard'))
+
+    if invitation.expires_at < datetime.utcnow():
+        flash("This invitation has expired.", "warning")
+        return redirect(url_for('main.dashboard'))
+
+    if invitation.is_accepted:
+        flash("This invitation has already been accepted.", "info")
+        return redirect(url_for('main.dashboard'))
+
+    # Check if already a member
+    existing = TeamMember.query.filter_by(user_id=current_user.id, team_id=invitation.team_id).first()
+    if existing:
+        flash("You are already a member of this team.", "info")
+        return redirect(url_for('main.dashboard'))
+
+    # Create membership
+    membership = TeamMember(
+        user_id=current_user.id,
+        team_id=invitation.team_id,
+        role='member'  # Force member role even if invitation had something else
+    )
+    db.session.add(membership)
+
+    # Mark invitation as accepted
+    invitation.is_accepted = True
+    db.session.commit()
+
+    flash(f"You've successfully joined the team: {membership.team.name}!", "success")
+    return redirect(url_for('main.dashboard'))
